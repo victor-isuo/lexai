@@ -1,0 +1,995 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>LexAI — AI Contract Intelligence</title>
+<meta name="description" content="AI-powered contract analysis grounded in Common Law principles. Upload any contract and receive a structured risk analysis with specific recommendations."/>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,600&family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+<style>
+
+/* ═══════════════════════════════════════
+   DESIGN LANGUAGE
+   Palette: warm ivory + deep navy + gold
+   Type:    Cormorant Garamond (serif display)
+            Inter (functional body)
+            JetBrains Mono (data/labels)
+   Aesthetic: Legal document meets modern
+              product — authoritative yet
+              approachable
+═══════════════════════════════════════ */
+
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+
+:root{
+  /* Colour */
+  --ivory:    #f8f4ec;
+  --ivory2:   #f0ead8;
+  --ivory3:   #e8dfc8;
+  --paper:    #fdfbf7;
+  --navy:     #0f1c2e;
+  --navy2:    #162436;
+  --navy3:    #1e3048;
+  --navy-lt:  #2a4260;
+  --gold:     #b8943a;
+  --gold2:    #d4ab50;
+  --gold3:    #f0cc78;
+  --gold-dim: rgba(184,148,58,.15);
+  --border:   rgba(15,28,46,.12);
+  --border2:  rgba(15,28,46,.08);
+
+  /* Status */
+  --critical: #c0392b;
+  --high:     #d4590a;
+  --medium:   #b8943a;
+  --low:      #2e7d52;
+
+  /* Type */
+  --serif: 'Cormorant Garamond', Georgia, serif;
+  --sans:  'Inter', system-ui, sans-serif;
+  --mono:  'JetBrains Mono', monospace;
+}
+
+html{scroll-behavior:smooth}
+
+body{
+  background:var(--paper);
+  color:var(--navy);
+  font-family:var(--sans);
+  font-size:15px;
+  line-height:1.65;
+  min-height:100vh;
+  overflow-x:hidden;
+  -webkit-font-smoothing:antialiased;
+  -moz-osx-font-smoothing:grayscale;
+}
+
+/* Subtle paper texture via repeating gradient */
+body::before{
+  content:'';position:fixed;inset:0;z-index:0;
+  background-image:repeating-linear-gradient(
+    0deg,transparent,transparent 28px,
+    rgba(15,28,46,.012) 28px,rgba(15,28,46,.012) 29px
+  );
+  pointer-events:none;
+}
+
+::-webkit-scrollbar{width:4px}
+::-webkit-scrollbar-track{background:var(--ivory)}
+::-webkit-scrollbar-thumb{background:var(--ivory3)}
+
+@keyframes fadeUp{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:translateY(0)}}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+@keyframes shimmerLine{0%{left:-100%}100%{left:200%}}
+@keyframes slideIn{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+
+/* ── NAV ── */
+nav{
+  position:sticky;top:0;z-index:200;
+  background:rgba(15,28,46,.97);
+  backdrop-filter:blur(12px);
+  -webkit-backdrop-filter:blur(12px);
+  border-bottom:1px solid rgba(184,148,58,.2);
+  padding:0 48px;
+  display:flex;align-items:center;justify-content:space-between;
+  height:60px;
+}
+
+.nav-left{display:flex;align-items:center;gap:16px}
+
+.nav-seal{
+  width:32px;height:32px;
+  border:1px solid var(--gold);
+  display:flex;align-items:center;justify-content:center;
+  flex-shrink:0;
+}
+
+.nav-seal-inner{
+  font-family:var(--serif);font-size:14px;font-weight:600;
+  color:var(--gold);letter-spacing:.05em;
+}
+
+.nav-wordmark{
+  display:flex;flex-direction:column;
+}
+
+.nav-title{
+  font-family:var(--serif);font-size:20px;font-weight:600;
+  color:var(--ivory);letter-spacing:.04em;line-height:1;
+}
+
+.nav-title em{color:var(--gold);font-style:normal}
+
+.nav-subtitle{
+  font-family:var(--mono);font-size:8px;letter-spacing:.22em;
+  text-transform:uppercase;color:rgba(248,244,236,.35);
+  margin-top:2px;
+}
+
+.nav-right{display:flex;align-items:center;gap:12px}
+
+.status-badge{
+  display:flex;align-items:center;gap:7px;
+  padding:5px 14px;
+  border:1px solid rgba(184,148,58,.25);
+  background:rgba(184,148,58,.06);
+}
+
+.status-indicator{
+  width:6px;height:6px;border-radius:50%;
+  background:var(--gold3);box-shadow:0 0 6px var(--gold3);
+  animation:pulse 2s infinite;
+}
+
+.status-indicator.ready{
+  background:var(--low);
+  box-shadow:0 0 6px var(--low);
+}
+
+.status-label{
+  font-family:var(--mono);font-size:8px;
+  letter-spacing:.18em;text-transform:uppercase;
+  color:var(--gold3);
+}
+
+.status-badge.ready .status-label{color:var(--low)}
+.status-badge.ready{border-color:rgba(46,125,82,.3);background:rgba(46,125,82,.06)}
+
+/* ── HERO ── */
+.hero{
+  position:relative;z-index:2;
+  background:var(--navy);
+  overflow:hidden;
+}
+
+/* Gold rule at top of hero */
+.hero::before{
+  content:'';
+  position:absolute;top:0;left:0;right:0;height:2px;
+  background:linear-gradient(90deg,transparent,var(--gold),var(--gold2),transparent);
+}
+
+/* Decorative rule lines */
+.hero::after{
+  content:'';
+  position:absolute;bottom:0;left:0;right:0;height:1px;
+  background:linear-gradient(90deg,transparent,rgba(184,148,58,.3),transparent);
+}
+
+.hero-inner{
+  max-width:1200px;margin:0 auto;
+  padding:88px 48px 80px;
+  display:grid;grid-template-columns:1fr 360px;
+  gap:72px;align-items:center;
+}
+
+.hero-eyebrow{
+  display:flex;align-items:center;gap:14px;
+  font-family:var(--mono);font-size:9px;
+  letter-spacing:.26em;text-transform:uppercase;
+  color:var(--gold);margin-bottom:28px;
+  opacity:0;animation:fadeUp .5s ease forwards .1s;
+}
+
+.eyebrow-rule{width:28px;height:1px;background:var(--gold)}
+
+.hero-heading{
+  font-family:var(--serif);font-weight:600;
+  font-size:clamp(40px,5.5vw,72px);
+  line-height:1.05;letter-spacing:.01em;
+  color:var(--ivory);margin-bottom:8px;
+  opacity:0;animation:fadeUp .6s ease forwards .25s;
+}
+
+.hero-heading em{
+  display:block;
+  color:var(--gold2);font-style:italic;
+}
+
+.hero-sub{
+  font-family:var(--serif);font-style:italic;
+  font-size:clamp(16px,2vw,22px);
+  color:rgba(248,244,236,.5);
+  margin-bottom:28px;letter-spacing:.02em;
+  opacity:0;animation:fadeUp .6s ease forwards .38s;
+}
+
+.hero-desc{
+  font-family:var(--sans);font-size:15px;font-weight:400;
+  color:rgba(248,244,236,.65);line-height:1.85;
+  max-width:500px;
+  opacity:0;animation:fadeUp .6s ease forwards .5s;
+}
+
+.hero-desc strong{color:var(--ivory);font-weight:500}
+
+/* Hero stats */
+.hero-stats{
+  display:flex;flex-direction:column;gap:1px;
+  background:rgba(184,148,58,.1);border:1px solid rgba(184,148,58,.15);
+  opacity:0;animation:fadeUp .7s ease forwards .4s;
+}
+
+.stat-block{
+  background:rgba(15,28,46,.8);padding:22px 24px;
+  border-bottom:1px solid rgba(184,148,58,.08);
+  transition:background .2s;
+}
+.stat-block:last-child{border-bottom:none}
+.stat-block:hover{background:rgba(22,36,54,.9)}
+
+.stat-n{
+  font-family:var(--serif);font-weight:600;
+  font-size:36px;line-height:1;
+  color:var(--gold2);letter-spacing:.02em;
+  margin-bottom:5px;
+}
+
+.stat-l{
+  font-family:var(--mono);font-size:8px;
+  letter-spacing:.18em;text-transform:uppercase;
+  color:rgba(248,244,236,.4);
+}
+
+/* ── UPLOAD AREA ── */
+.upload-section{
+  position:relative;z-index:2;
+  max-width:1200px;margin:0 auto;
+  padding:72px 48px;
+}
+
+.section-label{
+  display:flex;align-items:center;gap:14px;
+  font-family:var(--serif);font-style:italic;
+  font-size:13px;color:var(--gold);
+  letter-spacing:.08em;margin-bottom:32px;
+}
+
+.section-label::before,
+.section-label::after{
+  content:'';flex:1;height:1px;
+  background:linear-gradient(90deg,transparent,rgba(15,28,46,.15));
+}
+
+.section-label::before{
+  background:linear-gradient(90deg,rgba(15,28,46,.15),transparent);
+}
+
+.upload-card{
+  border:1px solid var(--ivory3);
+  background:var(--ivory);
+  position:relative;overflow:hidden;
+  transition:all .25s;cursor:pointer;
+}
+
+.upload-card:hover,.upload-card.drag-over{
+  border-color:var(--gold);
+  background:var(--ivory2);
+  box-shadow:0 0 0 3px var(--gold-dim);
+}
+
+/* Shimmer on hover */
+.upload-card::before{
+  content:'';
+  position:absolute;top:0;bottom:0;
+  width:60%;
+  background:linear-gradient(90deg,transparent,rgba(184,148,58,.06),transparent);
+  left:-100%;
+  transition:none;
+  pointer-events:none;
+}
+
+.upload-card:hover::before{
+  animation:shimmerLine .8s ease forwards;
+}
+
+.upload-inner{
+  padding:60px 40px;
+  text-align:center;
+}
+
+.upload-crest{
+  width:56px;height:56px;
+  border:1px solid var(--ivory3);
+  display:flex;align-items:center;justify-content:center;
+  margin:0 auto 24px;
+  transition:all .25s;
+}
+
+.upload-card:hover .upload-crest{
+  border-color:var(--gold);
+  background:var(--gold-dim);
+}
+
+.upload-crest-icon{
+  font-family:var(--serif);font-size:22px;
+  color:var(--navy-lt);transition:color .25s;
+}
+
+.upload-card:hover .upload-crest-icon{color:var(--gold)}
+
+.upload-heading{
+  font-family:var(--serif);font-weight:600;
+  font-size:26px;letter-spacing:.02em;
+  color:var(--navy);margin-bottom:10px;
+}
+
+.upload-body{
+  font-family:var(--sans);font-size:14px;
+  color:var(--navy-lt);line-height:1.75;
+  max-width:440px;margin:0 auto 28px;
+}
+
+.upload-cta{
+  display:inline-flex;align-items:center;gap:10px;
+  font-family:var(--mono);font-size:10px;
+  letter-spacing:.14em;text-transform:uppercase;
+  padding:13px 32px;
+  background:var(--navy);color:var(--ivory);
+  border:none;cursor:pointer;
+  transition:all .2s;
+}
+
+.upload-cta:hover{background:var(--gold);color:var(--navy)}
+
+.upload-meta{
+  font-family:var(--mono);font-size:9px;
+  letter-spacing:.1em;color:rgba(15,28,46,.35);
+  margin-top:20px;
+}
+
+/* Contract types */
+.contract-types{
+  display:flex;flex-wrap:wrap;justify-content:center;
+  gap:8px;margin-top:22px;
+}
+
+.type-tag{
+  font-family:var(--serif);font-style:italic;
+  font-size:12px;color:var(--navy-lt);
+  padding:4px 14px;
+  border:1px solid var(--border);
+  background:var(--paper);
+  letter-spacing:.03em;
+}
+
+#fileInput{display:none}
+
+/* ── PROGRESS ── */
+.progress-section{
+  display:none;
+  max-width:1200px;margin:0 auto;
+  padding:0 48px 64px;
+  position:relative;z-index:2;
+}
+
+.progress-card{
+  background:var(--navy);
+  border:1px solid rgba(184,148,58,.2);
+  overflow:hidden;
+}
+
+.progress-card::before{
+  content:'';display:block;height:2px;
+  background:linear-gradient(90deg,transparent,var(--gold),var(--gold2),transparent);
+}
+
+.progress-header{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:18px 24px;
+  border-bottom:1px solid rgba(248,244,236,.06);
+}
+
+.progress-title-wrap{display:flex;align-items:center;gap:10px}
+
+.progress-spinner{
+  width:14px;height:14px;
+  border:1.5px solid rgba(184,148,58,.3);
+  border-top-color:var(--gold);
+  border-radius:50%;animation:spin .8s linear infinite;
+  flex-shrink:0;
+}
+
+.progress-title{
+  font-family:var(--serif);font-style:italic;font-weight:400;
+  font-size:16px;color:var(--ivory);letter-spacing:.03em;
+}
+
+.progress-elapsed{
+  font-family:var(--mono);font-size:9px;
+  letter-spacing:.14em;color:rgba(184,148,58,.6);
+}
+
+.progress-stages{padding:22px 24px;display:flex;flex-direction:column;gap:12px}
+
+.stage{
+  display:flex;align-items:center;gap:12px;
+  opacity:.2;transition:opacity .45s;
+}
+
+.stage.active{opacity:1}
+.stage.done{opacity:.5}
+
+.stage-num{
+  font-family:var(--mono);font-size:9px;
+  color:rgba(184,148,58,.5);width:18px;
+  flex-shrink:0;letter-spacing:.08em;
+}
+
+.stage.active .stage-num{color:var(--gold)}
+.stage.done .stage-num{color:var(--low)}
+
+.stage-line{
+  width:1.5px;height:18px;background:rgba(248,244,236,.1);
+  flex-shrink:0;transition:background .35s;
+}
+
+.stage.active .stage-line{background:var(--gold);box-shadow:0 0 6px var(--gold)}
+.stage.done .stage-line{background:var(--low)}
+
+.stage-text{
+  font-family:var(--sans);font-size:13px;
+  color:rgba(248,244,236,.35);flex:1;letter-spacing:.01em;
+}
+
+.stage.active .stage-text{color:var(--ivory)}
+.stage.done .stage-text{color:rgba(46,125,82,.8)}
+
+.stage-check{
+  font-family:var(--mono);font-size:10px;
+  color:var(--low);display:none;
+}
+.stage.done .stage-check{display:block}
+
+/* ── RESULTS ── */
+.results-section{
+  display:none;
+  max-width:1200px;margin:0 auto;
+  padding:0 48px 80px;
+  position:relative;z-index:2;
+  animation:slideIn .5s ease both;
+}
+
+.results-meta-bar{
+  display:flex;align-items:center;flex-wrap:wrap;
+  gap:10px;margin-bottom:28px;
+}
+
+.risk-seal{
+  display:flex;align-items:center;gap:10px;
+  padding:10px 20px;border:1px solid;
+  font-family:var(--serif);font-size:14px;
+  letter-spacing:.06em;font-weight:600;
+}
+
+.risk-seal.CRITICAL{border-color:var(--critical);color:var(--critical);background:rgba(192,57,43,.06)}
+.risk-seal.HIGH    {border-color:var(--high);    color:var(--high);    background:rgba(212,89,10,.06)}
+.risk-seal.MEDIUM  {border-color:var(--medium);  color:var(--medium);  background:rgba(184,148,58,.06)}
+.risk-seal.LOW     {border-color:var(--low);     color:var(--low);     background:rgba(46,125,82,.06)}
+
+.risk-seal-icon{font-size:16px}
+
+.meta-tag{
+  display:flex;align-items:center;gap:6px;
+  padding:5px 12px;border:1px solid var(--border);
+  background:var(--ivory);
+  font-family:var(--mono);font-size:9px;
+  letter-spacing:.1em;color:var(--navy-lt);
+}
+
+.meta-tag .tag-label{color:rgba(15,28,46,.4)}
+
+/* Report document styling */
+.report-document{
+  background:var(--paper);
+  border:1px solid var(--ivory3);
+  box-shadow:0 4px 40px rgba(15,28,46,.08);
+  overflow:hidden;
+}
+
+.report-doc-header{
+  background:var(--navy);
+  padding:22px 32px;
+  display:flex;align-items:center;justify-content:space-between;
+  border-bottom:1px solid rgba(184,148,58,.15);
+}
+
+.report-doc-header::after{
+  content:'';position:absolute;left:0;right:0;
+  height:1px;background:linear-gradient(90deg,transparent,var(--gold),transparent);
+  display:none;
+}
+
+.doc-title{
+  font-family:var(--serif);font-style:italic;font-size:16px;
+  color:var(--ivory);letter-spacing:.04em;
+}
+
+.copy-btn{
+  font-family:var(--mono);font-size:9px;letter-spacing:.12em;
+  text-transform:uppercase;padding:6px 16px;
+  border:1px solid rgba(184,148,58,.35);
+  background:transparent;color:var(--gold);
+  cursor:pointer;transition:all .2s;
+}
+
+.copy-btn:hover{background:var(--gold);color:var(--navy)}
+
+.report-body{
+  padding:40px 40px;
+  max-height:72vh;overflow-y:auto;
+}
+
+.report-body::-webkit-scrollbar{width:3px}
+.report-body::-webkit-scrollbar-thumb{background:var(--ivory3)}
+
+.report-text{
+  font-family:var(--sans);font-size:14px;
+  line-height:1.95;color:var(--navy-lt);
+  white-space:pre-wrap;
+}
+
+/* Inline risk level highlighting */
+.report-text .rl-critical{color:var(--critical);font-weight:600}
+.report-text .rl-high    {color:var(--high);    font-weight:600}
+.report-text .rl-medium  {color:var(--medium);  font-weight:600}
+.report-text .rl-low     {color:var(--low);     font-weight:600}
+
+.reset-btn{
+  display:inline-flex;align-items:center;gap:8px;
+  font-family:var(--serif);font-style:italic;
+  font-size:14px;color:var(--navy-lt);
+  background:none;border:none;cursor:pointer;
+  margin-top:20px;transition:color .2s;
+  letter-spacing:.03em;
+}
+.reset-btn:hover{color:var(--gold)}
+
+/* ── ERROR ── */
+.error-zone{
+  display:none;
+  max-width:1200px;margin:0 auto;
+  padding:0 48px 32px;
+  position:relative;z-index:2;
+}
+
+.error-card{
+  background:rgba(192,57,43,.04);
+  border:1px solid rgba(192,57,43,.2);
+  border-left:2px solid var(--critical);
+  padding:14px 18px;
+  font-family:var(--mono);font-size:11px;
+  color:var(--critical);
+}
+
+.error-zone.visible{display:block}
+
+/* ── FOOTER ── */
+footer{
+  position:relative;z-index:2;
+  background:var(--navy);
+  border-top:1px solid rgba(184,148,58,.15);
+  padding:20px 48px;
+  display:flex;justify-content:space-between;align-items:center;
+  gap:12px;flex-wrap:wrap;
+}
+
+.footer-brand{
+  font-family:var(--serif);font-style:italic;
+  font-size:14px;color:rgba(248,244,236,.5);
+  letter-spacing:.03em;
+}
+
+.footer-note{
+  font-family:var(--mono);font-size:8px;
+  letter-spacing:.14em;color:rgba(248,244,236,.2);
+  text-transform:uppercase;
+}
+
+/* ════════════════════════════
+   RESPONSIVE — TABLET
+════════════════════════════ */
+@media(max-width:1024px){
+  .hero-inner{grid-template-columns:1fr;gap:48px}
+  .hero-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:0}
+  .hero-stats .stat-block{border-bottom:none;border-right:1px solid rgba(184,148,58,.08)}
+  .hero-stats .stat-block:last-child{border-right:none}
+}
+
+/* ════════════════════════════
+   RESPONSIVE — MOBILE
+════════════════════════════ */
+@media(max-width:768px){
+  nav{padding:0 16px;height:54px}
+  .nav-subtitle{display:none}
+
+  .hero-inner{padding:60px 16px 56px;gap:36px}
+  .hero-heading{font-size:clamp(34px,9vw,52px)}
+  .hero-sub{font-size:clamp(14px,4vw,18px)}
+  .hero-stats{grid-template-columns:1fr 1fr}
+  .hero-stats .stat-block{border:none;border-top:1px solid rgba(184,148,58,.08)}
+  .stat-n{font-size:28px}
+
+  .upload-section{padding:48px 16px}
+  .upload-inner{padding:36px 20px}
+  .upload-heading{font-size:20px}
+  .upload-body{font-size:13px}
+
+  .progress-section,.results-section,.error-zone{padding-left:16px;padding-right:16px}
+  .progress-stages{padding:16px}
+  .report-body{padding:24px 20px;max-height:60vh}
+  .report-doc-header{padding:16px 20px;flex-direction:column;align-items:flex-start;gap:10px}
+  .results-meta-bar{gap:7px}
+
+  footer{padding:16px;flex-direction:column;text-align:center;gap:6px}
+
+  /* Touch targets */
+  .upload-cta,.copy-btn{min-height:44px}
+  .reset-btn{min-height:44px;display:flex;align-items:center}
+}
+
+@media(max-width:420px){
+  .hero-heading{font-size:clamp(28px,9vw,40px)}
+  .hero-stats{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <div class="nav-left">
+    <div class="nav-seal"><div class="nav-seal-inner">L</div></div>
+    <div class="nav-wordmark">
+      <div class="nav-title">Lex<em>AI</em></div>
+      <div class="nav-subtitle">AI Contract Intelligence</div>
+    </div>
+  </div>
+  <div class="nav-right">
+    <div class="status-badge" id="statusBadge">
+      <div class="status-indicator" id="statusIndicator"></div>
+      <span class="status-label" id="statusLabel">Initialising</span>
+    </div>
+  </div>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-inner">
+    <div>
+      <div class="hero-eyebrow">
+        <span class="eyebrow-rule"></span>
+        Common Law · UNIDROIT Standards
+      </div>
+      <h1 class="hero-heading">
+        Contract<em>Intelligence.</em>
+      </h1>
+      <p class="hero-sub">Find what you missed before you sign.</p>
+      <p class="hero-desc">
+        Upload any contract and receive a <strong>structured risk analysis</strong>
+        grounded in Common Law principles and internationally recognised contract standards.
+        Every finding cited. Every recommendation actionable.
+      </p>
+    </div>
+    <div class="hero-stats">
+      <div class="stat-block">
+        <div class="stat-n">4</div>
+        <div class="stat-l">Specialist Agents</div>
+      </div>
+      <div class="stat-block">
+        <div class="stat-n">12</div>
+        <div class="stat-l">Clause Types Analysed</div>
+      </div>
+      <div class="stat-block">
+        <div class="stat-n">80+</div>
+        <div class="stat-l">Jurisdictions Covered</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- UPLOAD -->
+<div class="upload-section" id="uploadSection">
+  <div class="section-label">Upload Contract</div>
+
+  <div class="upload-card" id="uploadCard"
+       ondragover="handleDragOver(event)"
+       ondragleave="handleDragLeave(event)"
+       ondrop="handleDrop(event)"
+       onclick="document.getElementById('fileInput').click()">
+    <div class="upload-inner">
+      <div class="upload-crest">
+        <div class="upload-crest-icon">↑</div>
+      </div>
+      <h2 class="upload-heading">Upload Contract PDF</h2>
+      <p class="upload-body">
+        Drag and drop your contract here, or click to select a file.
+        The system will extract clauses, research applicable law,
+        and return a structured risk report.
+      </p>
+      <button class="upload-cta"
+              onclick="event.stopPropagation();document.getElementById('fileInput').click()">
+        Select PDF →
+      </button>
+      <p class="upload-meta">PDF only · Maximum 10MB · Text must be selectable</p>
+      <div class="contract-types">
+        <span class="type-tag">Employment Agreements</span>
+        <span class="type-tag">Service Agreements</span>
+        <span class="type-tag">NDAs</span>
+        <span class="type-tag">Software Licenses</span>
+        <span class="type-tag">Partnership Agreements</span>
+        <span class="type-tag">Loan Agreements</span>
+      </div>
+    </div>
+  </div>
+  <input type="file" id="fileInput" accept=".pdf" onchange="handleFileSelect(event)"/>
+</div>
+
+<!-- PROGRESS -->
+<div class="progress-section" id="progressSection">
+  <div class="progress-card">
+    <div class="progress-header">
+      <div class="progress-title-wrap">
+        <div class="progress-spinner"></div>
+        <span class="progress-title">Analysing your contract…</span>
+      </div>
+      <span class="progress-elapsed" id="progressTimer">0s</span>
+    </div>
+    <div class="progress-stages">
+      <div class="stage" id="ps1">
+        <span class="stage-num">01</span>
+        <div class="stage-line"></div>
+        <span class="stage-text">Parsing document structure and extracting clauses</span>
+        <span class="stage-check">✓</span>
+      </div>
+      <div class="stage" id="ps2">
+        <span class="stage-num">02</span>
+        <div class="stage-line"></div>
+        <span class="stage-text">Contract Analyst identifying significant provisions</span>
+        <span class="stage-check">✓</span>
+      </div>
+      <div class="stage" id="ps3">
+        <span class="stage-num">03</span>
+        <div class="stage-line"></div>
+        <span class="stage-text">Legal Researcher grounding findings in Common Law</span>
+        <span class="stage-check">✓</span>
+      </div>
+      <div class="stage" id="ps4">
+        <span class="stage-num">04</span>
+        <div class="stage-line"></div>
+        <span class="stage-text">Risk Assessor scoring each clause Critical to Low</span>
+        <span class="stage-check">✓</span>
+      </div>
+      <div class="stage" id="ps5">
+        <span class="stage-num">05</span>
+        <div class="stage-line"></div>
+        <span class="stage-text">Drafting plain language report with recommendations</span>
+        <span class="stage-check">✓</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ERROR -->
+<div class="error-zone" id="errorZone">
+  <div class="error-card" id="errorCard"></div>
+</div>
+
+<!-- RESULTS -->
+<div class="results-section" id="resultsSection">
+
+  <div class="results-meta-bar" id="metaBar"></div>
+
+  <div class="report-document">
+    <div class="report-doc-header">
+      <div class="doc-title" id="docTitle">Contract Analysis Report</div>
+      <button class="copy-btn" onclick="copyReport()">Copy Report</button>
+    </div>
+    <div class="report-body">
+      <div class="report-text" id="reportText"></div>
+    </div>
+  </div>
+
+  <button class="reset-btn" onclick="resetUI()">← Analyse another contract</button>
+
+</div>
+
+<!-- FOOTER -->
+<footer>
+  <div class="footer-brand">LexAI — AI Contract Intelligence</div>
+  <div class="footer-note">Common Law · UNIDROIT · Not Legal Advice</div>
+</footer>
+
+<script>
+const API = window.location.origin;
+let timerInterval = null;
+let startTime     = null;
+let stepTimers    = [];
+
+// ── Status polling ────────────────────────────────────────────────────────────
+async function checkStatus() {
+  try {
+    const res  = await fetch(`${API}/health`);
+    const data = await res.json();
+    const badge     = document.getElementById('statusBadge');
+    const indicator = document.getElementById('statusIndicator');
+    const label     = document.getElementById('statusLabel');
+    if (data.ready) {
+      badge.classList.add('ready');
+      indicator.classList.add('ready');
+      label.textContent = 'Ready';
+    } else {
+      setTimeout(checkStatus, 3000);
+    }
+  } catch(e) {
+    setTimeout(checkStatus, 5000);
+  }
+}
+checkStatus();
+
+// ── Drag and drop ─────────────────────────────────────────────────────────────
+function handleDragOver(e) {
+  e.preventDefault();
+  document.getElementById('uploadCard').classList.add('drag-over');
+}
+function handleDragLeave() {
+  document.getElementById('uploadCard').classList.remove('drag-over');
+}
+function handleDrop(e) {
+  e.preventDefault();
+  document.getElementById('uploadCard').classList.remove('drag-over');
+  const file = e.dataTransfer.files[0];
+  if (file?.name.toLowerCase().endsWith('.pdf')) uploadFile(file);
+  else showError('Please upload a PDF file.');
+}
+function handleFileSelect(e) {
+  const file = e.target.files[0];
+  if (file) uploadFile(file);
+}
+
+// ── Upload ────────────────────────────────────────────────────────────────────
+async function uploadFile(file) {
+  if (file.size > 10 * 1024 * 1024) { showError('File too large. Maximum 10MB.'); return; }
+
+  showProgress(file.name);
+
+  const formData = new FormData();
+  formData.append('file', file);
+
+  try {
+    const res = await fetch(`${API}/analyze`, { method:'POST', body:formData });
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.detail || `Analysis failed (${res.status})`);
+    }
+    showResults(await res.json());
+  } catch(e) {
+    hideProgress();
+    showError(`Analysis failed: ${e.message}`);
+  }
+}
+
+// ── Progress ──────────────────────────────────────────────────────────────────
+function showProgress(filename) {
+  document.getElementById('uploadSection').style.display   = 'none';
+  document.getElementById('progressSection').style.display = 'block';
+  document.getElementById('errorZone').classList.remove('visible');
+
+  const steps  = ['ps1','ps2','ps3','ps4','ps5'];
+  const delays = [0, 8000, 22000, 45000, 70000];
+  steps.forEach(id => document.getElementById(id).classList.remove('active','done'));
+
+  startTime     = Date.now();
+  timerInterval = setInterval(() => {
+    document.getElementById('progressTimer').textContent =
+      Math.floor((Date.now()-startTime)/1000) + 's';
+  }, 1000);
+
+  stepTimers = [];
+  delays.forEach((d, i) => {
+    stepTimers.push(setTimeout(() => {
+      if (i > 0) {
+        document.getElementById(steps[i-1]).classList.remove('active');
+        document.getElementById(steps[i-1]).classList.add('done');
+      }
+      document.getElementById(steps[i]).classList.add('active');
+    }, d));
+  });
+}
+
+function hideProgress() {
+  clearInterval(timerInterval);
+  stepTimers.forEach(clearTimeout);
+  document.getElementById('progressSection').style.display = 'none';
+}
+
+// ── Results ───────────────────────────────────────────────────────────────────
+function showResults(data) {
+  hideProgress();
+  ['ps1','ps2','ps3','ps4','ps5'].forEach(id => {
+    const el = document.getElementById(id);
+    el.classList.add('done'); el.classList.remove('active');
+  });
+
+  // Meta bar
+  const risk = data.overall_risk || 'UNKNOWN';
+  const riskIcons = {CRITICAL:'⚠', HIGH:'▲', MEDIUM:'◆', LOW:'●', UNKNOWN:'?'};
+  document.getElementById('metaBar').innerHTML = `
+    <div class="risk-seal ${risk}">
+      <span class="risk-seal-icon">${riskIcons[risk]||'◆'}</span>
+      ${risk} RISK
+    </div>
+    <div class="meta-tag"><span class="tag-label">TYPE&nbsp;</span>${data.contract_type}</div>
+    <div class="meta-tag"><span class="tag-label">PAGES&nbsp;</span>${data.pages}</div>
+    <div class="meta-tag"><span class="tag-label">CLAUSES&nbsp;</span>${data.clauses_detected}</div>
+    <div class="meta-tag"><span class="tag-label">TIME&nbsp;</span>${data.processing_time}s</div>
+    ${data.governing_law?`<div class="meta-tag"><span class="tag-label">LAW&nbsp;</span>${data.governing_law}</div>`:''}
+  `;
+
+  const name = data.filename.replace(/\.pdf$/i,'').replace(/_/g,' ');
+  document.getElementById('docTitle').textContent = name + ' — Analysis Report';
+  document.getElementById('reportText').innerHTML = formatReport(data.analysis_report);
+
+  document.getElementById('resultsSection').style.display = 'block';
+  document.getElementById('resultsSection').scrollIntoView({behavior:'smooth', block:'start'});
+}
+
+function formatReport(text) {
+  // Highlight risk levels with semantic colours
+  return text
+    .replace(/\[CRITICAL\]/g, '<span class="rl-critical">[CRITICAL]</span>')
+    .replace(/\[HIGH\]/g,     '<span class="rl-high">[HIGH]</span>')
+    .replace(/\[MEDIUM\]/g,   '<span class="rl-medium">[MEDIUM]</span>')
+    .replace(/\[LOW\]/g,      '<span class="rl-low">[LOW]</span>')
+    .replace(/\n/g, '<br/>');
+}
+
+// ── Utilities ─────────────────────────────────────────────────────────────────
+function showError(msg) {
+  document.getElementById('errorCard').textContent = msg;
+  document.getElementById('errorZone').classList.add('visible');
+}
+
+function copyReport() {
+  const text = document.getElementById('reportText').innerText;
+  navigator.clipboard.writeText(text).then(() => {
+    const btn = document.querySelector('.copy-btn');
+    btn.textContent = 'Copied ✓';
+    setTimeout(() => btn.textContent = 'Copy Report', 2500);
+  });
+}
+
+function resetUI() {
+  document.getElementById('resultsSection').style.display = 'none';
+  document.getElementById('uploadSection').style.display  = 'block';
+  document.getElementById('errorZone').classList.remove('visible');
+  document.getElementById('fileInput').value = '';
+  window.scrollTo({top:0, behavior:'smooth'});
+}
+</script>
+</body>
+</html>
+
