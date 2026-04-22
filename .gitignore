@@ -5,7 +5,10 @@ __pycache__/
 .venv/
 venv/
 data/uploads/
+data/lexai_kb/
 data/chroma/
 data/*.jsonl
 *.db
 .DS_Store
+*.bin
+*sqlite3
