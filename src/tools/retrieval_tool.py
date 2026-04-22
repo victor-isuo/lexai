@@ -62,7 +62,7 @@ class ClauseRiskTool(BaseTool):
         "Returns detected risk patterns with severity levels."
     )
 
-    'RISK_PATTERNS' == {
+    RISK_PATTERNS = {
         "unlimited_liability":     (r"unlimited\s+liabilit|no\s+cap|without\s+limit",         "CRITICAL"),
         "unilateral_modification": (r"may\s+modify\s+at\s+any\s+time|reserves\s+the\s+right\s+to\s+change", "HIGH"),
         "automatic_renewal":       (r"automatically\s+renew|auto.renew",                       "MEDIUM"),

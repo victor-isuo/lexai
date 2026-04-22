@@ -64,7 +64,7 @@ def build_crew(contract_text: str, contract_metadata: dict) -> Crew:
         tools=[kb_tool],
         verbose=True,
         allow_delegation=False,
-        max_iter=2,
+        max_iter=1,
         max_retry_limit=1,
     )
 
@@ -85,7 +85,7 @@ def build_crew(contract_text: str, contract_metadata: dict) -> Crew:
         tools=[kb_tool, risk_tool],
         verbose=True,
         allow_delegation=False,
-        max_iter=2,
+        max_iter=1,
         max_retry_limit=1,
     )
 
@@ -106,7 +106,7 @@ def build_crew(contract_text: str, contract_metadata: dict) -> Crew:
         tools=[risk_tool, kb_tool],
         verbose=True,
         allow_delegation=False,
-        max_iter=2,
+        max_iter=1,
         max_retry_limit=1,
     )
 
@@ -127,7 +127,7 @@ def build_crew(contract_text: str, contract_metadata: dict) -> Crew:
         tools=[],
         verbose=True,
         allow_delegation=False,
-        max_iter=2,
+        max_iter=1,
         max_retry_limit=1,
     )
 
