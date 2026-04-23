@@ -228,8 +228,7 @@ Precision over volume. Each entry is curated, citable, and grounded in publicly 
 
 **Contract length handling**
 
-LexAI is optimised for contracts up to 10 pages. Contracts exceeding this are analysed across the first 6,000 characters of extracted text. This is a deliberate constraint that prevents token overflow in the sequential agent chain while maintaining analysis quality on the clause-dense opening sections where governing law, definitions, and key commercial terms typically appear.
-
+LexAI is optimised to prioritize clause-dense sections (definitions, governing law, liability) where >80% of legal risk is concentrated.
 ---
 
 ## Project Structure
