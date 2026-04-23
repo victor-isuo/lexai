@@ -95,7 +95,7 @@ All content is grounded in publicly available Common Law principles and UNIDROIT
 
 ## Evaluation Results
 
-LLM-as-judge scoring using Groq Llama 4 Scout across three weighted axes:
+LLM-as-judge scoring using Gemini 2.5 Flash across three weighted axes. A separate model handles evaluation — keeping the judge independent from the agents being evaluated.
 
 | Axis | Weight | Measures |
 |------|--------|---------|
@@ -163,6 +163,8 @@ Evaluation results are logged to `data/eval_log.jsonl` and accessible via `/eval
 }
 ```
 
+**Processing time:** 60–120 seconds is expected. The four agents run sequentially — each specialist completes its full reasoning pass before handing off to the next. This is an architectural constraint, not a performance bug. The Legal Researcher cannot cite standards before the Contract Analyst has extracted clauses. The Risk Assessor cannot score before the Legal Researcher has grounded the findings.
+
 ---
 
 ## Local Setup
@@ -178,8 +180,8 @@ pip install -r requirements.txt
 
 Create `.env`:
 ```
-GEMINI_API_KEY=your_key
-GROQ_API_KEY=your_key
+GROQ_API_KEY=your_key          # Powers the four-agent analysis pipeline
+GEMINI_API_KEY=your_key        # Powers the LLM-as-judge evaluation layer
 LANGCHAIN_API_KEY=your_key
 LANGCHAIN_TRACING_V2=true
 LANGCHAIN_PROJECT=lexai
@@ -199,14 +201,34 @@ Open `http://localhost:7860/ui` and upload any contract PDF.
 | Layer | Technology |
 |-------|-----------|
 | Agent Framework | CrewAI 1.14.2 — sequential four-agent pipeline |
-| LLM (Analysis) | Gemini 2.5 Flash — 1M context window for multi-agent chains |
-| LLM (Evaluation) | Groq Llama 4 Scout — single-call judge scoring |
+| LLM (Multi-Agent Analysis) | Groq Llama 4 Scout — four-agent reasoning chain |
+| LLM (Evaluation) | Gemini 2.5 Flash — single-call LLM-as-judge scoring |
 | Retrieval | LangChain + ChromaDB + Sentence Transformers |
 | Embeddings | all-MiniLM-L6-v2 |
 | PDF Parsing | pdfplumber — structure-aware clause extraction |
 | API | FastAPI 0.136.0 |
 | Deployment | Hugging Face Spaces (Docker) |
 | Observability | LangSmith tracing |
+
+---
+
+## Key Decisions
+
+**Why CrewAI over LangGraph**
+
+LangGraph provides fine-grained state machine control suited for systems with complex conditional branching and dynamic routing. Legal contract review is a linear specialist handoff — each agent has a defined role and passes its output to the next. CrewAI's role-based sequential process maps directly to how a law firm actually operates: a junior associate extracts, a researcher grounds, a senior associate assesses risk, a partner drafts recommendations. Sequential is not a limitation here — it is the correct model.
+
+**Why sequential over parallel**
+
+Each agent's output is the next agent's input. The Risk Assessor cannot produce severity scores without the Legal Researcher's citations. The Plain Language Agent cannot write recommendations without the Risk Assessor's findings. Parallel execution would require merging incomplete, ungrounded outputs. Sequential execution enforces analytical discipline at every handoff.
+
+**Why 12 knowledge base entries**
+
+Precision over volume. Each entry is curated, citable, and grounded in publicly available legal standards. Twelve well-structured entries covering the nine most common high-risk clause types outperform hundreds of scraped paragraphs for this use case. The retrieval layer returns the two most relevant entries per query — sufficient context without context window overflow.
+
+**Contract length handling**
+
+LexAI is optimised for contracts up to 10 pages. Contracts exceeding this are analysed across the first 6,000 characters of extracted text. This is a deliberate constraint that prevents token overflow in the sequential agent chain while maintaining analysis quality on the clause-dense opening sections where governing law, definitions, and key commercial terms typically appear.
 
 ---
 
