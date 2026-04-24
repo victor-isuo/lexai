@@ -41,18 +41,17 @@ def build_crew(contract_text: str, contract_metadata: dict) -> Crew:
     contract_type = contract_metadata.get("contract_type", "Commercial Agreement")
     governing_law = (
         contract_metadata.get("governing_law") 
-        or "Governing law not specified in this agreement")
     parties       = contract_metadata.get("parties", [])
     parties_str   = " and ".join(parties) if parties else "parties not identified in document"
 
     # Cap contract text — agents get focused context, not the whole document
-    contract_excerpt = contract_text[:3500]
+    contract_excerpt = contract_text[:6000]
 
     # ── AGENT 1: Contract Analyst ─────────────────────────────────────────────
     contract_analyst = Agent(
         role="Senior Contract Analyst",
         goal=(
-            "Extract and categorise every significant clause from the contract. "
+            "Extract and categorise Every significant clause from the contract. "
             "Identify clause type, key obligation, and which party bears the burden."
         ),
         backstory=(
@@ -78,7 +77,7 @@ def build_crew(contract_text: str, contract_metadata: dict) -> Crew:
         ),
         backstory=(
             "Legal research specialist with deep expertise in Common Law contract "
-            "principles and UNIDROIT standards. You never make legal claims without "
+            "principles and UNIDROIT standards. Never make legal claims without "
             "citing an authoritative source."
         ),
         llm=llm,
@@ -165,7 +164,7 @@ For each clause:
 1. Search the knowledge base for applicable standards
 2. Run the risk signal tool on concerning clause text
 3. Note where this contract meets or falls short of standard protections
-4. Cite your knowledge base source for each finding
+4. High priority - Always Cite your knowledge base source for each finding
 
 Contract type: {contract_type} | Governing law: {governing_law}
 """,
@@ -188,7 +187,7 @@ State the consequence if the clause triggers as written.
 Then provide:
 - Overall contract risk: CRITICAL / HIGH / MEDIUM / LOW
 - Missing protections for a {contract_type}
-- Top 3 priority issues before signing
+- Top 5 priority issues before signing
 - Which party this contract overall favours
 """,
         expected_output=(
@@ -218,7 +217,7 @@ EXECUTIVE SUMMARY
 
 KEY FINDINGS
 [For each significant clause:]
-CLAUSE: [Name]
+CLAUSE: [Name and Number]
 RISK: [CRITICAL / HIGH / MEDIUM / LOW]
 WHAT IT SAYS: [Plain English — one sentence]
 WHY IT MATTERS: [The practical consequence — one sentence]
