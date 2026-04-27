@@ -9,7 +9,7 @@ pinned: false
 
 # ⚖️ LexAI — AI Contract Intelligence
 
-Production-grade contract analysis system grounded in Common Law principles and UNIDROIT international standards. Upload any contract PDF and receive a structured risk report with per-clause findings, severity ratings, and specific recommendations.
+AI-powered contract analysis grounded in Common Law principles and UNIDROIT international standards. Upload any contract PDF and receive a structured risk report with per-clause findings, severity ratings, and specific recommendations.
 
 ## 🔴 Live Demo
 
@@ -19,7 +19,7 @@ Production-grade contract analysis system grounded in Common Law principles and 
 
 ## What This Is
 
-Most AI contract tools are RAG chatbots — they retrieve text and summarise it. LexAI is different. It applies a four-agent reasoning pipeline where each specialist hands off to the next: clause extraction → legal research → risk assessment → plain language report. Every finding is grounded in the legal knowledge base. Every risk rating is justified.
+Most AI contract tools are RAG chatbots — they retrieve text and summarise it. LexAI is different. It applies a four-agent reasoning pipeline where each specialist hands off to the next: clause extraction → legal research → risk assessment → plain language report. Every finding is grounded in a curated legal knowledge base. Every risk rating is justified against an established legal standard.
 
 The difference between retrieving contract text and reasoning about it against established law is the difference between a keyword search and a legal opinion.
 
@@ -31,27 +31,34 @@ The difference between retrieving contract text and reasoning about it against e
 Contract PDF Upload
         ↓
 Document Parser
-(clause extraction · type classification
- risk signal detection · metadata)
+(clause boundary detection · type classification
+ automated risk signal scanning · metadata extraction)
         ↓
-ChromaDB Knowledge Base
-(Common Law principles · clause analysis
+Clause-Driven Input
+(structured ContractClause objects, priority-ordered
+ by risk signals — not raw text truncation)
+        ↓
+ChromaDB Legal Knowledge Base
+(Common Law principles · clause standards
  UNIDROIT standards · risk frameworks)
         ↓
 CrewAI Four-Agent Sequential Pipeline
         ↓
 ┌────────────────────────────────────────────┐
-│  Contract Analyst                          │
-│  Extracts and categorises all clauses      │
+│  Senior Contract Analyst                   │
+│  Reviews pre-extracted clauses,            │
+│  confirms types, identifies obligations    │
 │                    ↓                       │
-│  Legal Researcher                          │
+│  Legal Research Specialist                 │
 │  Grounds each clause in the knowledge base │
+│  with citations                            │
 │                    ↓                       │
-│  Risk Assessor                             │
+│  Contract Risk Assessment Specialist       │
 │  Scores CRITICAL / HIGH / MEDIUM / LOW     │
+│  with legal justification per clause       │
 │                    ↓                       │
-│  Plain Language Agent                      │
-│  Structured report with recommendations   │
+│  Legal Plain Language Specialist           │
+│  Structured report with specific actions   │
 └────────────────────────────────────────────┘
         ↓
 Structured Analysis Report
@@ -60,52 +67,114 @@ Structured Analysis Report
         ↓
 LLM-as-Judge Evaluation
 (clause detection · legal grounding
- recommendation specificity)
+ recommendation specificity · pass/fail score)
 ```
 
 ---
 
 ## What Makes This Different From Generic RAG
 
-**Clause-aware parsing.** Contracts have structure — headings, numbered provisions, schedules. The parser identifies clause boundaries before retrieval starts, so the system reasons about Clause 14 as a unit, not as arbitrary chunks.
+**Clause-aware parsing before the agents run.** The `ContractParser` identifies clause boundaries, classifies each clause by type (liability, indemnity, termination, IP etc.), and scans for automated risk signals before the LLM reasoning step begins. The agents receive structured `ContractClause` objects — not raw character slices. A contract with 30 clauses has its highest-risk clauses selected first, not its first 6,000 characters.
 
-**Four-agent role handoff.** Contract Analyst → Legal Researcher → Risk Assessor → Plain Language Agent. Each agent has a specific role, tools, and backstory. The Legal Researcher cannot produce findings without querying the knowledge base. The Risk Assessor cannot score without running the automated risk signal detector. The pipeline enforces discipline that a single-agent system cannot.
+**Four-agent role handoff.** Senior Contract Analyst → Legal Research Specialist → Contract Risk Assessment Specialist → Legal Plain Language Specialist. Each agent has a defined role, a specific tool set, and a backstory that anchors its reasoning. The Legal Researcher cannot produce findings without querying the knowledge base. The Risk Assessor cannot score without the Researcher's citations. The pipeline enforces analytical discipline a single-agent system cannot replicate.
 
-**Automated risk signal detection.** Ten risk patterns — unlimited liability, broad indemnity, unilateral modification rights, automatic renewal, one-sided termination, IP broad assignment — are detected automatically on every clause before the LLM reasoning step.
+**Pre-flight risk signal detection.** Fourteen risk patterns — unlimited liability, broad indemnity, unilateral modification rights, automatic renewal, one-sided termination, broad IP assignment, non-compete clauses — are detected automatically on every clause by regex pattern matching before any LLM call is made. These signals are passed to the agents as structured input, not discovered mid-reasoning.
 
-**LLM-as-judge evaluation.** Every analysis is scored by a separate judge model on three axes: clause detection accuracy, legal grounding accuracy, and recommendation specificity. The score is returned with every analysis response. This is the same evaluation-first engineering approach used in AgentEval.
+**LLM-as-judge evaluation.** Every analysis is independently scored by a separate judge model on three axes: clause detection accuracy (40%), legal grounding accuracy (35%), and recommendation specificity (25%). The score is returned with every API response. This is not claimed accuracy — it is measured accuracy.
+
+---
+
+## ⚠️ Current Limitations — Free Tier Infrastructure
+
+This is an honest account of what the demo does and does not do. Understanding these constraints matters for evaluating the system correctly.
+
+### Infrastructure Constraints
+
+The live demo runs on **Groq free tier** (30,000 tokens/minute) with **Hugging Face Spaces free CPU**.
+
+| Constraint | Demo | Production |
+|------------|------|------------|
+| LLM | Groq Llama-4-Scout 17B (free) | GPT-4o / Claude 3.5 Sonnet / Groq paid |
+| Token budget | ≤ 27,000 tokens/run | Uncapped |
+| Clause input | Top 12 clauses by risk priority | All clauses, full text |
+| Chars per clause | 600 characters | 3,000+ characters |
+| Processing time | 90–180 seconds | 30–60 seconds |
+| Concurrent users | 1 (rate limit shared) | Scales with infrastructure |
+
+### Model Constraints
+
+**Llama-4-Scout 17B has a practical reasoning limit** that becomes visible on complex contracts. The four-agent sequential pipeline accumulates context across tasks — by Task 3, the model is carrying 15,000+ tokens of prior reasoning. At this scale, a 17B parameter model on free tier will:
+
+- Truncate clause coverage, typically completing 5–8 clauses before concluding
+- Lose citation fidelity — legal source names from the KB become less precise
+- Produce shallower recommendations on later clauses than earlier ones
+- Occasionally return empty responses under sustained load, triggering the retry/fallback chain
+
+**This is a model capability constraint, not an architectural one.** The same pipeline on GPT-4o or Claude 3.5 Sonnet processes all clauses with consistent depth and full citation fidelity across the entire contract.
+
+### What the Demo Proves vs What It Does Not
+
+**What it proves:**
+- The full pipeline runs end-to-end: parse → clause extraction → 4-agent reasoning → KB retrieval → risk scoring → structured report → LLM-as-judge evaluation
+- The architecture is sound — clause-driven input, structured agent handoffs, grounded output format, independent evaluation
+- The engineering decisions are production-grade: fallback LLM chain, TPM-aware retry logic, structured data throughout, measurable eval scores
+
+**What it does not prove on free tier:**
+- Complete clause coverage for contracts longer than ~8 clauses
+- Consistent citation depth across all clauses
+- Production throughput or concurrent request handling
+
+### Production Path
+
+Two changes move this to full production capability:
+
+```python
+# legal_crew.py
+MAX_CLAUSES     = None   # process all clauses
+CLAUSE_CHAR_CAP = 3000   # full clause text
+
+# .env
+GROQ_API_KEY = <paid tier key>
+# or substitute: OPENAI_API_KEY / ANTHROPIC_API_KEY
+```
+
+No architectural changes. No code restructuring. The clause-driven pipeline, agent definitions, KB retrieval, eval layer, and API are all production-ready as written.
 
 ---
 
 ## Knowledge Base
 
-12 knowledge base entries covering:
+12 curated entries covering the highest-risk clause categories in commercial contracts:
 
 | Category | Content |
 |----------|---------|
 | Clause Analysis | Limitation of liability, indemnification, termination, confidentiality, IP, force majeure, dispute resolution, payment terms, warranties |
-| Legal Principles | Common Law contract fundamentals, contra proferentem, variation clauses, waiver, severability |
+| Legal Principles | Common Law fundamentals, contra proferentem, variation clauses, waiver, severability |
 | International Standards | UNIDROIT Principles — good faith, hardship, gross disparity, interpretation |
 | Contract Type Guidance | Employment contracts, NDAs, service agreements |
 | Risk Framework | CRITICAL / HIGH / MEDIUM / LOW assessment methodology |
 
 All content is grounded in publicly available Common Law principles and UNIDROIT standards — applicable across 80+ jurisdictions including UK, USA, Canada, Australia, Nigeria, Kenya, Singapore, and India.
 
+Precision over volume. Twelve well-structured entries covering the nine most common high-risk clause types outperform hundreds of scraped paragraphs for this use case. The retrieval layer returns the two most relevant entries per query — sufficient context without context window overflow.
+
 ---
 
-## Evaluation Results
+## Evaluation
 
-LLM-as-judge scoring using Gemini 2.5 Flash across three weighted axes. A separate model handles evaluation — keeping the judge independent from the agents being evaluated.
+LLM-as-judge scoring on three weighted axes. A separate model handles evaluation — keeping the judge independent from the agents being evaluated.
 
 | Axis | Weight | Measures |
 |------|--------|---------|
-| Clause Detection | 40% | Did the system identify all significant clauses? |
-| Legal Grounding | 35% | Are findings cited against legal standards? |
-| Recommendation Specificity | 25% | Are recommendations specific and actionable? |
+| Clause Detection | 40% | Did the system identify all significant clauses present? |
+| Legal Grounding | 35% | Are findings cited against specific legal standards? |
+| Recommendation Specificity | 25% | Are recommendations specific and immediately actionable? |
 
 Pass threshold: ≥ 0.70
 
-Evaluation results are logged to `data/eval_log.jsonl` and accessible via `/eval/history` and `/eval/summary` endpoints.
+**On free tier**, eval scores reflect the truncated analysis — scores for clause detection will be lower than production because the model covers fewer clauses. Legal grounding and recommendation specificity scores are more reliable as indicators since they measure quality of what was produced, not coverage.
+
+Evaluation results are logged to `data/eval_log.jsonl` and accessible via `/eval/history` and `/eval/summary`.
 
 ---
 
@@ -133,10 +202,10 @@ Evaluation results are logged to `data/eval_log.jsonl` and accessible via `/eval
 | Endpoint | Method | Description |
 |----------|--------|-------------|
 | `/ui` | GET | Web interface |
-| `/analyze` | POST | Upload PDF and receive analysis |
+| `/analyze` | POST | Upload PDF — returns structured analysis |
 | `/eval/history` | GET | Recent evaluation scores |
-| `/eval/summary` | GET | Evaluation summary statistics |
-| `/health` | GET | System health check |
+| `/eval/summary` | GET | Aggregate evaluation statistics |
+| `/health` | GET | System health and readiness check |
 | `/docs` | GET | Swagger API documentation |
 
 ### Example Response
@@ -147,15 +216,15 @@ Evaluation results are logged to `data/eval_log.jsonl` and accessible via `/eval
   "contract_type": "Service Agreement",
   "overall_risk": "HIGH",
   "analysis_report": "CONTRACT ANALYSIS REPORT\n...",
-  "processing_time": 87.4,
+  "processing_time": 94.2,
   "clauses_detected": 12,
   "pages": 8,
   "governing_law": "England and Wales",
   "eval": {
-    "score": 0.847,
+    "score": 0.741,
     "passed": true,
     "axis_scores": {
-      "clause_detection": 0.90,
+      "clause_detection": 0.65,
       "legal_grounding": 0.82,
       "recommendation_specificity": 0.78
     }
@@ -163,7 +232,7 @@ Evaluation results are logged to `data/eval_log.jsonl` and accessible via `/eval
 }
 ```
 
-**Processing time:** 60–120 seconds is expected. The four agents run sequentially — each specialist completes its full reasoning pass before handing off to the next. This is an architectural constraint, not a performance bug. The Legal Researcher cannot cite standards before the Contract Analyst has extracted clauses. The Risk Assessor cannot score before the Legal Researcher has grounded the findings.
+Note: `clause_detection` score of 0.65 reflects free-tier partial coverage. `legal_grounding` and `recommendation_specificity` reflect quality of the clauses that were analysed.
 
 ---
 
@@ -173,16 +242,16 @@ Evaluation results are logged to `data/eval_log.jsonl` and accessible via `/eval
 git clone https://github.com/victor-isuo/lexai.git
 cd lexai
 python -m venv .venv
-.venv\Scripts\activate        # Windows
-source .venv/bin/activate     # Mac/Linux
+source .venv/bin/activate      # Mac/Linux
+.venv\Scripts\activate         # Windows
 pip install -r requirements.txt
 ```
 
 Create `.env`:
 ```
-GROQ_API_KEY=your_key          # Powers the four-agent analysis pipeline
-GEMINI_API_KEY=your_key        # Powers the LLM-as-judge evaluation layer
-LANGCHAIN_API_KEY=your_key
+GROQ_API_KEY=your_key          # Four-agent analysis pipeline
+GEMINI_API_KEY=your_key        # LLM-as-judge evaluation layer
+LANGCHAIN_API_KEY=your_key     # LangSmith tracing (optional)
 LANGCHAIN_TRACING_V2=true
 LANGCHAIN_PROJECT=lexai
 ```
@@ -201,8 +270,8 @@ Open `http://localhost:7860/ui` and upload any contract PDF.
 | Layer | Technology |
 |-------|-----------|
 | Agent Framework | CrewAI 1.14.2 — sequential four-agent pipeline |
-| LLM (Multi-Agent Analysis) | Groq Llama 4 Scout — four-agent reasoning chain |
-| LLM (Evaluation) | Gemini 2.5 Flash — single-call LLM-as-judge scoring |
+| LLM (Analysis) | Groq Llama-4-Scout 17B-16E — four-agent reasoning |
+| LLM (Evaluation) | Groq Llama-3.3-70B — LLM-as-judge scoring |
 | Retrieval | LangChain + ChromaDB + Sentence Transformers |
 | Embeddings | all-MiniLM-L6-v2 |
 | PDF Parsing | pdfplumber — structure-aware clause extraction |
@@ -216,19 +285,24 @@ Open `http://localhost:7860/ui` and upload any contract PDF.
 
 **Why CrewAI over LangGraph**
 
-LangGraph provides fine-grained state machine control suited for systems with complex conditional branching and dynamic routing. Legal contract review is a linear specialist handoff — each agent has a defined role and passes its output to the next. CrewAI's role-based sequential process maps directly to how a law firm actually operates: a junior associate extracts, a researcher grounds, a senior associate assesses risk, a partner drafts recommendations. Sequential is not a limitation here — it is the correct model.
+LangGraph provides fine-grained state machine control suited for systems with complex conditional branching and dynamic routing. Legal contract review is a linear specialist handoff — each agent has a defined role and passes its output to the next. CrewAI's role-based sequential process maps directly to how a law firm actually operates: a senior analyst extracts clauses, a researcher grounds each finding in established law, a risk specialist scores exposure, a plain language specialist writes actionable recommendations. Sequential is not a limitation here — it is the correct model for this workflow.
+
+**Why clause-driven input over raw text slicing**
+
+The previous approach passed `contract_text[:6000]` to the crew — a blind character slice that ignored document structure entirely. The current approach uses structured `ContractClause` objects from the parser: each clause carries its heading, full text, detected type, and pre-scanned risk signals. When the input cap is hit, the 12 highest-risk clauses are selected by signal priority — not the first 12 that happen to appear before character 6,000. This is architecturally correct even when the model's output quality is constrained by the underlying LLM tier.
 
 **Why sequential over parallel**
 
-Each agent's output is the next agent's input. The Risk Assessor cannot produce severity scores without the Legal Researcher's citations. The Plain Language Agent cannot write recommendations without the Risk Assessor's findings. Parallel execution would require merging incomplete, ungrounded outputs. Sequential execution enforces analytical discipline at every handoff.
+Each agent's output is the next agent's input. The Risk Assessor cannot produce severity scores without the Legal Researcher's citations. The Plain Language Specialist cannot write recommendations before the Risk Assessor has justified each rating. Parallel execution would require merging incomplete, ungrounded outputs — and would not reduce total token consumption on a shared TPM budget.
 
 **Why 12 knowledge base entries**
 
-Precision over volume. Each entry is curated, citable, and grounded in publicly available legal standards. Twelve well-structured entries covering the nine most common high-risk clause types outperform hundreds of scraped paragraphs for this use case. The retrieval layer returns the two most relevant entries per query — sufficient context without context window overflow.
+Precision over volume. Each entry is curated, citable, and grounded in publicly available legal standards. Twelve well-structured entries covering the nine most common high-risk clause types outperform hundreds of scraped paragraphs for this use case. The retrieval layer returns the two most relevant entries per query — sufficient grounding without context window pressure.
 
-**Contract length handling**
+**Why LLM-as-judge evaluation**
 
-LexAI is optimised to prioritize clause-dense sections (definitions, governing law, liability) where >80% of legal risk is concentrated.
+Output quality in agentic systems cannot be measured by latency or error rate alone. A contract analysis report that runs without errors but misses the indemnity clause is a worse failure than one that errors and retries. The evaluation layer measures what matters: did the system find the clauses, are the findings legally grounded, are the recommendations specific enough to act on. Every response carries a score. This is the same evaluation-first approach used in AgentEval.
+
 ---
 
 ## Project Structure
@@ -242,13 +316,13 @@ lexai/
 │   │   ├── document_parser.py     # Structure-aware PDF clause extraction
 │   │   └── knowledge_base.py      # ChromaDB legal knowledge base
 │   ├── tools/
-│   │   └── retrieval_tool.py      # CrewAI tools — KB search + risk detection
+│   │   └── retrieval_tool.py      # KB search + risk signal detection tools
 │   └── evaluation/
 │       └── legal_eval.py          # LLM-as-judge evaluation layer
 ├── static/
 │   └── index.html                 # Web interface
 ├── data/
-│   ├── uploads/                   # Temporary upload storage
+│   ├── uploads/                   # Temporary upload storage (auto-cleaned)
 │   └── eval_log.jsonl             # Evaluation history log
 ├── main.py                        # FastAPI application
 ├── Dockerfile
@@ -260,16 +334,14 @@ lexai/
 
 ## Relationship to Industrial AI Copilot
 
-LexAI demonstrates domain transferability of the same agentic RAG architecture:
+LexAI demonstrates domain transferability of the same agentic RAG architecture across high-stakes domains:
 
 | System | Domain | Stakes | Agent Framework |
 |--------|--------|--------|----------------|
-| Industrial AI Copilot | Equipment fault diagnosis | Operational downtime | LangGraph |
+| Industrial AI Copilot | Equipment fault diagnosis | Operational downtime, safety | LangGraph |
 | LexAI | Contract risk analysis | Legal and financial liability | CrewAI |
 
-Both systems include custom evaluation infrastructure that makes accuracy measurable rather than claimed. Both operate in domains where incorrect AI outputs carry real cost.
-
-*"I've applied the same agentic RAG architecture across industrial equipment fault diagnosis — where a wrong answer causes downtime — and legal contract analysis — where a missed clause creates liability. Both systems include evaluation infrastructure that makes accuracy measurable, not claimed."*
+Both systems use structure-aware ingestion before retrieval, curated knowledge bases over scraped corpora, and independent evaluation infrastructure that makes accuracy measurable rather than claimed. Both operate in domains where an incorrect AI output carries a real cost.
 
 ---
 
