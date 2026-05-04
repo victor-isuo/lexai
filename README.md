@@ -74,7 +74,7 @@ LLM-as-Judge Evaluation
 
 ## What Makes This Different From Generic RAG
 
-**Clause-aware parsing before the agents run.** The `ContractParser` identifies clause boundaries, classifies each clause by type (liability, indemnity, termination, IP etc.), and scans for automated risk signals before the LLM reasoning step begins. The agents receive structured `ContractClause` objects — not raw character slices. A contract with 30 clauses has its highest-risk clauses selected first, not its first 6,000 characters.
+**Clause-aware parsing before the agents run.** The `ContractParser` identifies clause boundaries, classifies each clause by type (liability, indemnity, termination, IP etc.), and scans for automated risk signals before the LLM reasoning step begins. The agents receive structured `ContractClause` objects — not raw character slices. A contract with 30 clauses has its highest-risk clauses selected first.
 
 **Four-agent role handoff.** Senior Contract Analyst → Legal Research Specialist → Contract Risk Assessment Specialist → Legal Plain Language Specialist. Each agent has a defined role, a specific tool set, and a backstory that anchors its reasoning. The Legal Researcher cannot produce findings without querying the knowledge base. The Risk Assessor cannot score without the Researcher's citations. The pipeline enforces analytical discipline a single-agent system cannot replicate.
 
